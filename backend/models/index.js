@@ -4,6 +4,7 @@ const sequelize = require("../config/db");
 const User = require("./User");
 const Group = require("./Group");
 const GroupMember = require("./GroupMember");
+const PasswordResetToken = require("./PasswordResetToken");
 
 // Associations
 User.hasMany(Group, { foreignKey: "createdBy", as: "createdGroups" });
@@ -25,4 +26,4 @@ GroupMember.belongsTo(Group, { foreignKey: "groupId" });
 User.hasMany(GroupMember, { foreignKey: "userId" });
 Group.hasMany(GroupMember, { foreignKey: "groupId" });
 
-module.exports = { sequelize, User, Group, GroupMember };
+module.exports = { sequelize, User, Group, GroupMember, PasswordResetToken };
