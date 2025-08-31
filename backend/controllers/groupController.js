@@ -98,3 +98,134 @@ exports.getMyGroups = async (req, res) => {
         res.status(500).json({ message: "Failed to fetch groups", error: error.message });
     }
 }
+
+
+// Get all members of a specific group
+exports.getGroupMembers = async (req, res) => {
+    try {
+        const groupId = parseInt(req.params.id, 10);
+
+        // Check if group exists
+        const group = await Group.findByPk(groupId);
+        if (!group) {
+            return res.status(404).json({ message: "Group not found" });
+        }
+
+        // Get all members with user info and role
+        const members = await GroupMember.findAll({
+            where: { groupId },
+            attributes: ["userId", "role"],
+            include: [
+                {
+                    model: User,
+                    attributes: ["id", "name", "email"]
+                }
+            ]
+        });
+
+        return res.json({ count: members.length, members });
+    } catch (error) {
+        console.log("Error in getGroupMembers in groupController.js file");
+        res.status(500).json({ message: "Failed to fetch group members", error: error.message });
+    }
+};
+
+// ...existing code...
+
+// Remove a specific member from a group (admin-only)
+exports.removeMember = async (req, res) => {
+    try {
+        const groupId = parseInt(req.params.id, 10);
+        const memberId = parseInt(req.params.memberId, 10);
+
+        // Only group admins can remove members
+        const admin = await GroupMember.findOne({ where: { groupId, userId: req.user.id } });
+        if (!admin || admin.role !== "admin") {
+            return res.status(403).json({ message: "Only group admins can remove members" });
+        }
+
+        // Can't remove self as admin
+        if (req.user.id === memberId) {
+            return res.status(400).json({ message: "Admins cannot remove themselves" });
+        }
+
+        const member = await GroupMember.findOne({ where: { groupId, userId: memberId } });
+        if (!member) {
+            return res.status(404).json({ message: "Member not found in this group" });
+        }
+
+        await member.destroy();
+        return res.json({ message: "Member removed from group" });
+    } catch (error) {
+        console.log("Error in removeMember in groupController.js file");
+        res.status(500).json({ message: "Failed to remove member", error: error.message });
+    }
+};
+
+// Remove a specific member from a group (admin-only)
+exports.removeMember = async (req, res) => {
+    try {
+        const groupId = parseInt(req.params.id, 10);
+        const memberId = parseInt(req.params.memberId, 10);
+
+        // Only group admins can remove members
+        const admin = await GroupMember.findOne({ where: { groupId, userId: req.user.id } });
+        if (!admin || admin.role !== "admin") {
+            return res.status(403).json({ message: "Only group admins can remove members" });
+        }
+
+        // Can't remove self as admin
+        if (req.user.id === memberId) {
+            return res.status(400).json({ message: "Admins cannot remove themselves" });
+        }
+
+        const member = await GroupMember.findOne({ where: { groupId, userId: memberId } });
+        if (!member) {
+            return res.status(404).json({ message: "Member not found in this group" });
+        }
+
+        await member.destroy();
+        return res.json({ message: "Member removed from group" });
+    } catch (error) {
+        console.log("Error in removeMember in groupController.js file");
+        res.status(500).json({ message: "Failed to remove member", error: error.message });
+    }
+};
+
+
+// Change a specific member's role in a group (admin-only)
+exports.changeMemberRole = async (req, res) => {
+    try {
+        const groupId = parseInt(req.params.id, 10);
+        const memberId = parseInt(req.params.memberId, 10);
+        const { role } = req.body;
+
+        if (!["admin", "member"].includes(role)) {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+
+        // Only group admins can change roles
+        const admin = await GroupMember.findOne({ where: { groupId, userId: req.user.id } });
+        if (!admin || admin.role !== "admin") {
+            return res.status(403).json({ message: "Only group admins can change member roles" });
+        }
+
+        // Can't change own role
+        if (req.user.id === memberId) {
+            return res.status(400).json({ message: "Admins cannot change their own role" });
+        }
+
+        const member = await GroupMember.findOne({ where: { groupId, userId: memberId } });
+        if (!member) {
+            return res.status(404).json({ message: "Member not found in this group" });
+        }
+
+        member.role = role;
+        await member.save();
+
+        return res.json({ message: "Member role updated", member });
+    } catch (error) {
+        console.log("Error in changeMemberRole in groupController.js file");
+        res.status(500).json({ message: "Failed to change member role", error: error.message });
+    }
+};
