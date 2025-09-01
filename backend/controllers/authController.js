@@ -6,7 +6,6 @@ const crypto = require("crypto");
 const brevo = require("@getbrevo/brevo");
 require("dotenv").config();
 
-const JWT_SECRET = "your_secret_key";
 
 // Signup Controller
 exports.signup = async (req, res) => {
@@ -60,7 +59,7 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
-        const token = jwt.sign({ id: user.id }, JWT_SECRET, {
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
             expiresIn: "1h",
         });
 

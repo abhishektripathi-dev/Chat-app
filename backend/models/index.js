@@ -5,20 +5,17 @@ const User = require("./User");
 const Group = require("./Group");
 const GroupMember = require("./GroupMember");
 const PasswordResetToken = require("./PasswordResetToken");
+const Message = require("./Message");
 
 // Associations
 User.hasMany(Group, { foreignKey: "createdBy", as: "createdGroups" });
 Group.belongsTo(User, { foreignKey: "createdBy", as: "creator" });
 
 User.belongsToMany(Group, {
-    through: GroupMember,
-    foreignKey: "userId",
-    as: "memberGroups",
+    through: GroupMember, foreignKey: "userId", as: "memberGroups",
 });
 Group.belongsToMany(User, {
-    through: GroupMember,
-    foreignKey: "groupId",
-    as: "members",
+    through: GroupMember, foreignKey: "groupId", as: "members",
 });
 
 GroupMember.belongsTo(User, { foreignKey: "userId" });
@@ -26,4 +23,9 @@ GroupMember.belongsTo(Group, { foreignKey: "groupId" });
 User.hasMany(GroupMember, { foreignKey: "userId" });
 Group.hasMany(GroupMember, { foreignKey: "groupId" });
 
-module.exports = { sequelize, User, Group, GroupMember, PasswordResetToken };
+Message.belongsTo(User, { foreignKey: "userId", as: "sender" });
+Message.belongsTo(Group, { foreignKey: "groupId" });
+Group.hasMany(Message, { foreignKey: "groupId" });
+User.hasMany(Message, { foreignKey: "userId" });
+
+module.exports = { sequelize, User, Group, GroupMember, PasswordResetToken, Message };
