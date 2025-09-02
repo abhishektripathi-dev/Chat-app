@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat App - Auth</title>
+    <link rel="stylesheet" href="./css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <h2>Login</h2>
+        <input id="login-email" type="email" placeholder="Email">
+        <input id="login-password" type="password" placeholder="Password">
+        <button id="btn-login">Login</button>
+        <p>
+            <a href="#" id="show-register">Register</a> | 
+            <a href="#" id="show-forgot">Forgot Password?</a>
+        </p>
+        <div id="login-error" class="error"></div>
+    </div>
+
+    <div class="auth-container" id="register-container" style="display:none;">
+        <h2>Register</h2>
+        <input id="register-name" type="text" placeholder="Name">
+        <input id="register-email" type="email" placeholder="Email">
+        <input id="register-password" type="password" placeholder="Password">
+        <button id="btn-register">Register</button>
+        <p><a href="#" id="show-login">Back to Login</a></p>
+        <div id="register-error" class="error"></div>
+    </div>
+
+    <div class="auth-container" id="forgot-container" style="display:none;">
+        <h2>Forgot Password</h2>
+        <input id="forgot-email" type="email" placeholder="Email">
+        <button id="btn-forgot">Send Reset Link</button>
+        <p><a href="#" id="show-login2">Back to Login</a></p>
+        <div id="forgot-msg" class="info"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="./js/auth.js"></script>
+</body>
+</html>

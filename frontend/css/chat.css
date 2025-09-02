@@ -1,0 +1,133 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+}
+.sidebar {
+    width: 250px;
+    background: #222;
+    color: #fff;
+    height: 100vh;
+    float: left;
+    display: flex;
+    flex-direction: column;
+}
+.sidebar-header {
+    padding: 1em;
+    display: flex;
+    gap: 0.5em;
+}
+#group-search {
+    width: 90%;
+    margin: 0.5em auto;
+    display: block;
+    padding: 0.5em;
+}
+.group-list {
+    flex: 1;
+    overflow-y: auto;
+}
+.group-item {
+    padding: 1em;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+}
+.group-item:hover,
+.group-item.active {
+    background: #444;
+}
+.main {
+    margin-left: 250px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+.chat-header {
+    background: #fff;
+    padding: 1em;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+#chat-group-name {
+    font-weight: bold;
+}
+#member-count {
+    color: #888;
+}
+#btn-members {
+    margin-left: auto;
+}
+.chat-log {
+    flex: 1;
+    padding: 1em;
+    overflow-y: auto;
+    background: #fafafa;
+}
+.msg {
+    margin: 0.5em 0;
+}
+.msg.chat {
+    background: #e3f2fd;
+    padding: 0.5em;
+    border-radius: 5px;
+}
+.msg.system {
+    color: #888;
+    font-style: italic;
+}
+.chat-input {
+    display: flex;
+    padding: 1em;
+    background: #fff;
+    border-top: 1px solid #ddd;
+}
+#msg {
+    flex: 1;
+    padding: 0.5em;
+}
+#send {
+    margin-left: 0.5em;
+}
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal {
+    background: #fff;
+    padding: 2em;
+    border-radius: 8px;
+    min-width: 300px;
+}
+.member-item {
+    margin: 0.5em 0;
+}
+
+.bubble {
+    max-width: 60%;
+    margin: 0.5em 0;
+    padding: 0.7em 1em;
+    border-radius: 16px;
+    background: #e3f2fd;
+    clear: both;
+    position: relative;
+    word-break: break-word;
+}
+.bubble.me {
+    background: #d1ffc4;
+    margin-left: auto;
+    text-align: right;
+}
+.bubble.other {
+    background: #fff;
+    margin-right: auto;
+    text-align: left;
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chat App</title>
+    <link rel="stylesheet" href="./css/chat.css">
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <button id="btn-new-group">+ New Group</button>
+            <button id="btn-logout">Logout</button>
+        </div>
+        <input id="group-search" type="text" placeholder="Search groups...">
+        <div id="group-list" class="group-list"></div>
+    </div>
+    <div class="main">
+        <div class="chat-header">
+            <span id="chat-group-name">Select a group</span>
+            <span id="member-count"></span>
+            <button id="btn-members">Members</button>
+        </div>
+        <div id="log" class="chat-log"></div>
+        <div class="chat-input">
+            <input id="msg" type="text" placeholder="Type a message...">
+            <button id="send">Send</button>
+        </div>
+    </div>
+    <!-- Members Modal -->
+    <div id="modal-backdrop" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <h3>Group Members</h3>
+            <div id="member-list"></div>
+            <input id="add-member-input" type="text" placeholder="Email to add">
+            <select id="add-member-role">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button id="btn-add-member">Add Member</button>
+            <button id="btn-close-modal">Close</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="./js/chat.js"></script>
+</body>
+
+</html>
