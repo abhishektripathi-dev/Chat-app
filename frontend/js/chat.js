@@ -2,29 +2,37 @@ const API_BASE = "http://localhost:5000";
 let token = localStorage.getItem("token");
 let currentGroupId = null;
 
+// Pagination state
+let limit = 50;
+let offset = 0;
+let allLoaded = false;
+let messagesCache = [];
+
+// Helper: Authorization header
 function authHeader() {
     return { Authorization: `Bearer ${token}` };
 }
 
-function showMessage(msg, type = "system") {
-    const log = document.getElementById("log");
-    const div = document.createElement("div");
-    div.className = `msg ${type}`;
-    div.innerText = msg;
-    log.appendChild(div);
-    log.scrollTop = log.scrollHeight;
+// Helper: Get current user ID from JWT token
+function getCurrentUserId() {
+    try {
+        return JSON.parse(atob(token.split('.')[1])).id;
+    } catch {
+        return null;
+    }
 }
 
+// Clear chat log
 function clearChat() {
     document.getElementById("log").innerHTML = "";
 }
 
-// Load groups
+// ========== GROUPS ==========
+
+// Load all groups for the current user
 async function loadGroups() {
     try {
-        const res = await axios.get(`${API_BASE}/groups`, {
-            headers: authHeader(),
-        });
+        const res = await axios.get(`${API_BASE}/groups`, { headers: authHeader() });
         const list = document.getElementById("group-list");
         list.innerHTML = "";
         (res.data.groups || []).forEach((group) => {
@@ -37,50 +45,76 @@ async function loadGroups() {
     } catch (err) { }
 }
 
-// Open group
+// Open a group: reset pagination, load messages and members
 async function openGroup(groupId, groupName) {
     currentGroupId = groupId;
     document.getElementById("chat-group-name").innerText = groupName;
     clearChat();
+    limit = 50;
+    offset = 0;
+    allLoaded = false;
+    messagesCache = [];
     await loadMessages();
     await loadMembers();
 }
 
-// Helper to get current user ID from token
-function getCurrentUserId() {
-    try {
-        return JSON.parse(atob(token.split('.')[1])).id;
-    } catch {
-        return null;
-    }
-}
+// ========== MESSAGES & PAGINATION ==========
 
-// In loadMessages()
-async function loadMessages() {
+// Load messages with pagination
+async function loadMessages({ append = false } = {}) {
     if (!currentGroupId) return;
     try {
         const res = await axios.get(
-            `${API_BASE}/groups/${currentGroupId}/messages?limit=50&offset=0`,
+            `${API_BASE}/groups/${currentGroupId}/messages?limit=${limit}&offset=${offset}`,
             { headers: authHeader() }
         );
-        clearChat();
         const messages = res.data.messages || res.data || [];
-        const userId = getCurrentUserId();
-        messages.forEach(msg => {
-            let userName = msg.sender?.name || msg.user || "Unknown";
-            userName = userName.charAt(0).toUpperCase() + userName.slice(1);
-            const isMe = msg.userId === userId;
-            const div = document.createElement("div");
-            div.className = "bubble " + (isMe ? "me" : "other");
-            div.innerHTML = `<div style="font-size:0.9em;color:#888;">${userName}</div>
-                             <div>${msg.text || msg.content}</div>`;
-            document.getElementById("log").appendChild(div);
-        });
-        document.getElementById("log").scrollTop = document.getElementById("log").scrollHeight;
+        if (messages.length < limit) allLoaded = true;
+        if (append) {
+            messagesCache = [...messages, ...messagesCache];
+        } else {
+            messagesCache = messages;
+        }
+        renderMessages(messagesCache, append);
+        document.getElementById("btn-load-prev").style.display = allLoaded ? "none" : "";
     } catch (err) { }
 }
 
-// Send message
+// Render messages in chat log
+function renderMessages(list, append) {
+    const log = document.getElementById("log");
+    if (!append) log.innerHTML = "";
+    const userId = getCurrentUserId();
+    let prevHeight = log.scrollHeight;
+
+    list.forEach((msg, idx) => {
+        // Avoid duplicate DOM nodes when appending
+        if (append && idx < limit) return;
+        let userName = msg.sender?.name || msg.user?.name || msg.user || "Unknown";
+        userName = userName.charAt(0).toUpperCase() + userName.slice(1);
+        const isMe = msg.userId === userId;
+        const div = document.createElement("div");
+        div.className = "bubble " + (isMe ? "me" : "other");
+        div.innerHTML = `<div style="font-size:0.9em;color:#888;">${userName}</div>
+                         <div>${msg.text || msg.content}</div>`;
+        log.appendChild(div);
+    });
+
+    // Scroll to bottom if not appending, else maintain scroll position
+    if (!append) {
+        log.scrollTop = log.scrollHeight;
+    } else {
+        log.scrollTop = log.scrollHeight - prevHeight;
+    }
+}
+
+// Load previous messages (pagination)
+document.getElementById("btn-load-prev").onclick = async () => {
+    offset += limit;
+    await loadMessages({ append: true });
+};
+
+// Send a new message
 async function sendMessage() {
     const input = document.getElementById("msg");
     const text = input.value.trim();
@@ -92,11 +126,18 @@ async function sendMessage() {
             { headers: authHeader() }
         );
         input.value = "";
+        // Reset pagination to show latest messages
+        limit = 50;
+        offset = 0;
+        allLoaded = false;
+        messagesCache = [];
         await loadMessages();
     } catch (err) { }
 }
 
-// Load members
+// ========== MEMBERS ==========
+
+// Load members of the current group
 async function loadMembers() {
     if (!currentGroupId) return;
     try {
@@ -108,8 +149,7 @@ async function loadMembers() {
         const members = res.data.members || res.data || [];
         document.getElementById("member-count").innerText = members.length;
 
-        // Get current user ID from token
-        const userId = JSON.parse(atob(token.split('.')[1])).id;
+        const userId = getCurrentUserId();
 
         members.forEach(m => {
             let name = m.User?.name || m.name || m.email || "Unknown";
@@ -132,8 +172,7 @@ async function loadMembers() {
                         );
                         await loadMembers();
                     } catch (e) {
-                        alert(e.response.data.message);
-                        // alert("Failed to change role");
+                        alert(e.response?.data?.message || "Failed to change role");
                     }
                 };
                 div.appendChild(btn);
@@ -143,7 +182,7 @@ async function loadMembers() {
     } catch (err) { }
 }
 
-// Add member
+// Add a member with role selection
 async function addMember() {
     const input = document.getElementById("add-member-input");
     const roleSelect = document.getElementById("add-member-role");
@@ -161,7 +200,8 @@ async function addMember() {
     } catch (err) { }
 }
 
-// Create group
+// ========== GROUP CREATION ==========
+
 async function createGroup() {
     const name = prompt("Enter group name:");
     if (!name) return;
@@ -175,13 +215,15 @@ async function createGroup() {
     } catch (err) { }
 }
 
-// Logout
+// ========== AUTH ==========
+
 function logout() {
     localStorage.removeItem("token");
     window.location.href = "auth.html";
 }
 
-// Event listeners
+// ========== EVENT LISTENERS ==========
+
 document.getElementById("send").addEventListener("click", sendMessage);
 document.getElementById("btn-new-group").addEventListener("click", createGroup);
 document.getElementById("btn-logout").addEventListener("click", logout);
@@ -195,9 +237,14 @@ document.getElementById("btn-add-member").addEventListener("click", addMember);
 document.getElementById("msg").addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMessage();
 });
-setInterval(loadMessages, 5000);
 
-// Init
+// Poll for new messages every 5 seconds (only latest page)
+setInterval(() => {
+    if (offset === 0) loadMessages();
+}, 5000);
+
+// ========== INIT ==========
+
 if (!token) {
     window.location.href = "auth.html";
 } else {
