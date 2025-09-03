@@ -157,7 +157,7 @@ exports.removeMember = async (req, res) => {
         await member.destroy();
         return res.json({ message: "Member removed from group" });
     } catch (error) {
-        console.log("Error in removeMember in groupController.js file");
+        console.log("Error in removeMember in groupController", error);
         res.status(500).json({ message: "Failed to remove member", error: error.message });
     }
 };

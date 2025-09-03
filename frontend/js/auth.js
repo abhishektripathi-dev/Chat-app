@@ -26,10 +26,12 @@ document.getElementById("btn-login").onclick = async () => {
 // Register
 document.getElementById("btn-register").onclick = async () => {
     const name = document.getElementById("register-name").value.trim();
+    const phone = document.getElementById("register-phone").value.trim();
     const email = document.getElementById("register-email").value.trim();
     const password = document.getElementById("register-password").value.trim();
     try {
-        await axios.post(`${API_BASE}/auth/register`, { name, email, password });
+        await axios.post(`${API_BASE}/auth/signup`, { name, phone, email, password });
+
         show("login-container");
     } catch (e) {
         document.getElementById("register-error").innerText = e.response?.data?.message || "Register failed";

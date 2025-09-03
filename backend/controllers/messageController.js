@@ -40,7 +40,7 @@ exports.getMessages = async (req, res) => {
             order: [["id", "ASC"]],
             limit,
             offset,
-            include: [{ association: "sender", attributes: ["id", "name", "email"] }]
+            include: [{ association: "sender", attributes: ["id", "name", "email", "createdAt"] }]
         })
 
         return res.json({ count: messages.length, messages });

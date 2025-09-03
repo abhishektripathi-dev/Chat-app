@@ -88,26 +88,34 @@ function renderMessages(list, append) {
     let prevHeight = log.scrollHeight;
 
     list.forEach((msg, idx) => {
-        // Avoid duplicate DOM nodes when appending
         if (append && idx < limit) return;
-        let userName = msg.sender?.name || msg.user?.name || msg.user || "Unknown";
+        let userName = msg.sender?.name || "Unknown";
         userName = userName.charAt(0).toUpperCase() + userName.slice(1);
         const isMe = msg.userId === userId;
+
+        // Format date and time
+        const dt = new Date(msg.createdAt || msg.created_at);
+        const dateStr = dt.toLocaleDateString();
+        const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
         const div = document.createElement("div");
         div.className = "bubble " + (isMe ? "me" : "other");
-        div.innerHTML = `<div style="font-size:0.9em;color:#888;">${userName}</div>
-                         <div>${msg.text || msg.content}</div>`;
+        div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;font-size:0.9em;color:#888;">
+                <span>${userName}</span>
+                <span>${dateStr} ${timeStr}</span>
+            </div>
+            <div>${msg.text || msg.content}</div>
+        `;
         log.appendChild(div);
     });
 
-    // Scroll to bottom if not appending, else maintain scroll position
     if (!append) {
         log.scrollTop = log.scrollHeight;
     } else {
         log.scrollTop = log.scrollHeight - prevHeight;
     }
 }
-
 // Load previous messages (pagination)
 document.getElementById("btn-load-prev").onclick = async () => {
     offset += limit;
@@ -150,6 +158,9 @@ async function loadMembers() {
         document.getElementById("member-count").innerText = members.length;
 
         const userId = getCurrentUserId();
+        // Find current user's role
+        const me = members.find(m => m.userId === userId);
+        const myRole = me?.role || "member";
 
         members.forEach(m => {
             let name = m.User?.name || m.name || m.email || "Unknown";
@@ -161,9 +172,10 @@ async function loadMembers() {
 
             // Show role toggle button if not self
             if (m.userId !== userId) {
-                const btn = document.createElement("button");
-                btn.innerText = role === "admin" ? "Make Member" : "Make Admin";
-                btn.onclick = async () => {
+                // Change role button
+                const btnRole = document.createElement("button");
+                btnRole.innerText = role === "admin" ? "Make Member" : "Make Admin";
+                btnRole.onclick = async () => {
                     try {
                         await axios.patch(
                             `${API_BASE}/groups/${currentGroupId}/members/${m.userId}/role`,
@@ -175,7 +187,27 @@ async function loadMembers() {
                         alert(e.response?.data?.message || "Failed to change role");
                     }
                 };
-                div.appendChild(btn);
+                div.appendChild(btnRole);
+
+                // Remove button (only if current user is admin)
+                if (myRole === "admin") {
+                    const btnRemove = document.createElement("button");
+                    btnRemove.innerText = "Remove";
+                    btnRemove.style.marginLeft = "8px";
+                    btnRemove.onclick = async () => {
+                        if (!confirm(`Remove ${name} from group?`)) return;
+                        try {
+                            await axios.delete(
+                                `${API_BASE}/groups/${currentGroupId}/members/${m.userId}`,
+                                { headers: authHeader() }
+                            );
+                            await loadMembers();
+                        } catch (e) {
+                            alert(e.response?.data?.message || "Failed to remove member");
+                        }
+                    };
+                    div.appendChild(btnRemove);
+                }
             }
             list.appendChild(div);
         });
@@ -188,6 +220,9 @@ async function addMember() {
     const roleSelect = document.getElementById("add-member-role");
     const userIdOrEmail = input.value.trim();
     const role = roleSelect.value;
+    const errorDiv = document.getElementById("add-member-error");
+    if (errorDiv) errorDiv.innerText = ""; // Clear previous error
+
     if (!userIdOrEmail || !currentGroupId) return;
     try {
         await axios.post(
@@ -196,10 +231,20 @@ async function addMember() {
             { headers: authHeader() }
         );
         input.value = "";
+        if (errorDiv) errorDiv.innerText = "";
         await loadMembers();
-    } catch (err) { }
+    } catch (err) {
+        // Show error in red in the modal
+        let msg = err.response?.data?.message || "Failed to add member";
+        if (errorDiv) {
+            errorDiv.innerText = msg;
+            errorDiv.style.color = "red";
+            input.value = "";
+        } else {
+            alert(msg);
+        }
+    }
 }
-
 // ========== GROUP CREATION ==========
 
 async function createGroup() {
@@ -231,6 +276,7 @@ document.getElementById("btn-members").addEventListener("click", () => {
     document.getElementById("modal-backdrop").style.display = "flex";
 });
 document.getElementById("btn-close-modal").addEventListener("click", () => {
+    document.getElementById("add-member-error").innerText = ""
     document.getElementById("modal-backdrop").style.display = "none";
 });
 document.getElementById("btn-add-member").addEventListener("click", addMember);
