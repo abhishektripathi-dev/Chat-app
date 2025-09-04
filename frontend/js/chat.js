@@ -2,11 +2,14 @@ const API_BASE = "http://localhost:5000";
 let token = localStorage.getItem("token");
 let currentGroupId = null;
 
+const socket = io(API_BASE);
+
 // Pagination state
 let limit = 50;
 let offset = 0;
 let allLoaded = false;
 let messagesCache = [];
+
 
 // Helper: Authorization header
 function authHeader() {
@@ -46,8 +49,23 @@ async function loadGroups() {
 }
 
 // Open a group: reset pagination, load messages and members
+// async function openGroup(groupId, groupName) {
+//     currentGroupId = groupId;
+//     document.getElementById("chat-group-name").innerText = groupName;
+//     clearChat();
+//     limit = 50;
+//     offset = 0;
+//     allLoaded = false;
+//     messagesCache = [];
+//     await loadMessages();
+//     await loadMembers();
+// }
 async function openGroup(groupId, groupName) {
+    // Leave previous group room
+    if (currentGroupId) socket.emit('leaveGroup', currentGroupId);
     currentGroupId = groupId;
+    socket.emit('joinGroup', groupId);
+
     document.getElementById("chat-group-name").innerText = groupName;
     clearChat();
     limit = 50;
@@ -57,6 +75,12 @@ async function openGroup(groupId, groupName) {
     await loadMessages();
     await loadMembers();
 }
+
+socket.on('newMessage', (msg) => {
+    if (msg.groupId !== currentGroupId) return;
+    messagesCache.push(msg);
+    renderMessages(messagesCache, false);
+});
 
 // ========== MESSAGES & PAGINATION ==========
 
@@ -123,6 +147,25 @@ document.getElementById("btn-load-prev").onclick = async () => {
 };
 
 // Send a new message
+// async function sendMessage() {
+//     const input = document.getElementById("msg");
+//     const text = input.value.trim();
+//     if (!text || !currentGroupId) return;
+//     try {
+//         await axios.post(
+//             `${API_BASE}/groups/${currentGroupId}/messages`,
+//             { content: text },
+//             { headers: authHeader() }
+//         );
+//         input.value = "";
+//         // Reset pagination to show latest messages
+//         limit = 50;
+//         offset = 0;
+//         allLoaded = false;
+//         messagesCache = [];
+//         await loadMessages();
+//     } catch (err) { }
+// }
 async function sendMessage() {
     const input = document.getElementById("msg");
     const text = input.value.trim();
@@ -134,12 +177,7 @@ async function sendMessage() {
             { headers: authHeader() }
         );
         input.value = "";
-        // Reset pagination to show latest messages
-        limit = 50;
-        offset = 0;
-        allLoaded = false;
-        messagesCache = [];
-        await loadMessages();
+        // No need to reload messages, will be handled by WebSocket
     } catch (err) { }
 }
 
@@ -285,9 +323,9 @@ document.getElementById("msg").addEventListener("keydown", (e) => {
 });
 
 // Poll for new messages every 5 seconds (only latest page)
-setInterval(() => {
-    if (offset === 0) loadMessages();
-}, 5000);
+// setInterval(() => {
+//     if (offset === 0) loadMessages();
+// }, 5000);
 
 // ========== INIT ==========
 
