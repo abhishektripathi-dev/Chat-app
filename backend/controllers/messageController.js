@@ -1,59 +1,30 @@
-const { Message, GroupMember, User } = require("../models")
-
-// Send message in a group (user must be member)
-// exports.sendMessage = async (req, res) => {
-//     try {
-//         const userId = req.user.id;
-//         const groupId = parseInt(req.params.id, 10);
-//         const { content } = req.body;
-
-//         if (!content?.trim()) return res.status(400).json({ message: "Message content required" });
-
-//         // check membership
-//         const membership = await GroupMember.findOne({ where: { groupId, userId } });
-//         if (!membership) return res.status(403).json({ message: "You are not member of this group" });
-
-//         const message = await Message.create({ content: content.trim(), userId, groupId });
-//         return res.status(201).json({ message: "Message sent", data: message });
-
-//     } catch (error) {
-//         console.log("Error in sendMessage controller", error);
-//         res.status(500).json({ message: "Send message failed", error: error.message });
-//     }
-// };
-// const { Message, User } = require("../models");
+const { Message, User, ArchivedMessage } = require("../models");
+const path = require('path');
 
 exports.sendMessage = async (req, res) => {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.groupId, 10);
         const { content } = req.body;
-
         if (!content || !content.trim()) {
             return res.status(400).json({ message: "Message content required" });
         }
-
-        // Save message
         const message = await Message.create({
             groupId,
             userId: req.user.id,
             content: content.trim()
         });
-
-        // Fetch user info for broadcasting
         const user = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'email'] });
         const msgToSend = {
             id: message.id,
             groupId: message.groupId,
             userId: message.userId,
             content: message.content,
+            fileUrl: message.fileUrl,
             createdAt: message.createdAt,
-            sender: user ? { id: user.id, name: user.name, email: user.email } : null
+            user: user ? { id: user.id, name: user.name, email: user.email } : null
         };
-
-        // Emit to group via Socket.IO
         const io = req.app.get('io');
         io.to(`group_${groupId}`).emit('newMessage', msgToSend);
-
         res.status(201).json(msgToSend);
     } catch (error) {
         console.error("Error in sendMessage:", error);
@@ -61,32 +32,67 @@ exports.sendMessage = async (req, res) => {
     }
 };
 
-// Get messages of a group (pagination supported)
-exports.getMessages = async (req, res) => {
-
+exports.sendMediaMessage = async (req, res) => {
     try {
+        const groupId = parseInt(req.params.groupId, 10);
         const userId = req.user.id;
-        const groupId = parseInt(req.params.id, 10);
-        const limit = parseInt(req.query.limit, 10) || 50;
-        const offset = parseInt(req.query.offset, 10) || 0;
+        const file = req.file;
+        const content = req.body.content || '';
+        if (!file) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+        const fileUrl = `/uploads/${file.filename}`;
+        const message = await Message.create({
+            groupId,
+            userId,
+            content,
+            fileUrl,
+        });
+        const user = await User.findByPk(userId, { attributes: ['id', 'name', 'email'] });
+        const msgToSend = {
+            id: message.id,
+            groupId: message.groupId,
+            userId: message.userId,
+            content: message.content,
+            fileUrl: message.fileUrl,
+            createdAt: message.createdAt,
+            user: user ? { id: user.id, name: user.name, email: user.email } : null
+        };
+        const io = req.app.get('io');
+        io.to(`group_${groupId}`).emit('newMessage', msgToSend);
+        res.status(201).json(msgToSend);
+    } catch (error) {
+        console.error("Error in sendMediaMessage:", error);
+        res.status(500).json({ message: "Failed to send media message" });
+    }
+};
 
-        // membership check
-        const membership = await GroupMember.findOne({ where: { groupId, userId } });
-        if (!membership) return res.status(403).json({ message: "You are not member of this group" });
-
+exports.getMessages = async (req, res) => {
+    try {
+        const groupId = parseInt(req.params.groupId, 10);
         const messages = await Message.findAll({
             where: { groupId },
-            order: [["id", "ASC"]],
-            limit,
-            offset,
-            include: [{ association: "sender", attributes: ["id", "name", "email", "createdAt"] }]
-        })
-
-        return res.json({ count: messages.length, messages });
-
+            include: [{ model: User, as: 'sender', attributes: ['id', 'name', 'email'] }],
+            order: [['createdAt', 'ASC']]
+        });
+        res.json({ messages });
     } catch (error) {
-        console.log("Error in getMessages controller", error);
-        return res.status(500).json({ message: "Get messages failed", error: error.message });
+        console.error("Error in getMessages controller", error);
+        res.status(500).json({ message: "Failed to fetch messages" });
     }
+};
 
+exports.getArchivedMessages = async (req, res) => {
+    try {
+        const groupId = parseInt(req.params.groupId, 10);
+        // Fetch all archived messages for the group, newest first
+        const messages = await ArchivedMessage.findAll({
+            where: { groupId },
+            order: [['createdAt', 'ASC']]
+        });
+        res.json({ messages });
+    } catch (error) {
+        console.error("Error in getArchivedMessages controller", error);
+        res.status(500).json({ message: "Failed to fetch archived messages" });
+    }
 };

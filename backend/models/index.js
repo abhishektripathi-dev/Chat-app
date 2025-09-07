@@ -6,6 +6,7 @@ const Group = require("./Group");
 const GroupMember = require("./GroupMember");
 const PasswordResetToken = require("./PasswordResetToken");
 const Message = require("./Message");
+const ArchivedMessage = require("./ArchivedMessage"); // <-- Add this line
 
 // Associations
 User.hasMany(Group, { foreignKey: "createdBy", as: "createdGroups" });
@@ -28,4 +29,6 @@ Message.belongsTo(Group, { foreignKey: "groupId" });
 Group.hasMany(Message, { foreignKey: "groupId" });
 User.hasMany(Message, { foreignKey: "userId" });
 
-module.exports = { sequelize, User, Group, GroupMember, PasswordResetToken, Message };
+// No associations needed for ArchivedMessage
+
+module.exports = { sequelize, User, Group, GroupMember, PasswordResetToken, Message, ArchivedMessage };

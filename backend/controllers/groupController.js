@@ -4,9 +4,7 @@ const { User, Group, GroupMember } = require("../models");
 exports.createGroup = async (req, res) => {
     try {
         const { name } = req.body;
-        if (!name?.trim()) {
-            return res.status(400).json({ message: "Group name is required" });
-        }
+        if (!name.trim()) return res.status(400).json({ message: "Group name is required" });
 
         const group = await Group.create({
             name: name.trim(),
@@ -22,7 +20,7 @@ exports.createGroup = async (req, res) => {
 
         return res.status(201).json({ message: "Group created", group });
     } catch (error) {
-        console.log("error in createGroup in groupController.js file");
+        console.log("error in createGroup in groupController.js file", error);
         res.status(500).json({
             message: "Failed to create group",
             error: error.message,
@@ -33,28 +31,30 @@ exports.createGroup = async (req, res) => {
 // Add a member by email (admin-only)
 exports.addMember = async (req, res) => {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.groupId, 10);
         const { email, role = "member" } = req.body;
 
         if (!email) return res.status(400).json({ message: "Email is required" });
-        if (!["admin", "member"].includes(role)) return res.status(400).json({ message: "Invalid role" });
 
         const group = await Group.findByPk(groupId);
         if (!group) return res.status(404).json({ message: "Group not found" });
 
         // only admins of this group can add members
         const meInGroup = await GroupMember.findOne({ where: { groupId, userId: req.user.id } });
-        if (!meInGroup || meInGroup.role !== "admin") {
+        if (meInGroup.role !== "admin") {
             return res.status(403).json({ message: "Only group admins can add members" });
         }
 
         const userToAdd = await User.findOne({ where: { email } });
         if (!userToAdd) return res.status(404).json({ message: "User with this email not found" });
-
+    
         const [membership, created] = await GroupMember.findOrCreate({
             where: { userId: userToAdd.id, groupId },
             defaults: { role },
         });
+
+// membership: the record (existing or newly created)
+// created: a boolean → true if new, false if already existed.
 
         if (!created) {
             // if already member, allow role upgrade by admin
@@ -68,7 +68,7 @@ exports.addMember = async (req, res) => {
         return res.status(201).json({ message: "Member added", membership });
 
     } catch (error) {
-        console.log("Error in addMember in groupController.js file");
+        console.log("Error in addMember in groupController.js file", error);
         return res.status(500).json({ message: "Failed to add member", error: error.message });
     }
 };
@@ -103,7 +103,7 @@ exports.getMyGroups = async (req, res) => {
 // Get all members of a specific group
 exports.getGroupMembers = async (req, res) => {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.groupId, 10);
 
         // Check if group exists
         const group = await Group.findByPk(groupId);
@@ -130,12 +130,10 @@ exports.getGroupMembers = async (req, res) => {
     }
 };
 
-// ...existing code...
-
 // Remove a specific member from a group (admin-only)
 exports.removeMember = async (req, res) => {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.groupId, 10);
         const memberId = parseInt(req.params.memberId, 10);
 
         // Only group admins can remove members
@@ -196,7 +194,7 @@ exports.removeMember = async (req, res) => {
 // Change a specific member's role in a group (admin-only)
 exports.changeMemberRole = async (req, res) => {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.groupId, 10);
         const memberId = parseInt(req.params.memberId, 10);
         const { role } = req.body;
 
