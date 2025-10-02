@@ -8,6 +8,7 @@
 </head>
 
 <body>
+
     <div class="sidebar">
         <div class="sidebar-header">
             <button id="btn-new-group">+ New Group</button>
@@ -16,21 +17,29 @@
         <input id="group-search" type="text" placeholder="Search groups...">
         <div id="group-list" class="group-list"></div>
     </div>
+
     <div class="main">
+
         <div class="chat-header">
             <span id="chat-group-name">Select a group</span>
             <span id="member-count"></span>
             <button id="btn-members">Members</button>
         </div>
-        <button id="btn-load-prev" style="width:100%;display:none;">⬆ Load Previous Messages</button>
+
+        <button id="btn-archived-chat" style="width:100%; display: none;">📦 Archived Chat</button>
+
         <div id="log" class="chat-log"></div>
+
         <div class="chat-input">
             <input id="msg" type="text" placeholder="Type a message...">
+            <input id="file-input" type="file" style="margin-left:8px;">
             <button id="send">Send</button>
         </div>
     </div>
+
     <!-- Members Modal -->
     <div id="modal-backdrop" class="modal-backdrop" style="display:none;">
+
         <div class="modal">
             <h3>Group Members</h3>
             <div id="member-list"></div>
@@ -47,7 +56,7 @@
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="./js/chat.js"></script>
+    <script type="module" src="./JavaScript/chat.js"></script>
 </body>
 
 </html>

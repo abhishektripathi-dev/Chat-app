@@ -105,6 +105,42 @@ async function loadMessages({ append = false } = {}) {
 }
 
 // Render messages in chat log
+// function renderMessages(list, append) {
+//     const log = document.getElementById("log");
+//     if (!append) log.innerHTML = "";
+//     const userId = getCurrentUserId();
+//     let prevHeight = log.scrollHeight;
+
+//     list.forEach((msg, idx) => {
+//         if (append && idx < limit) return;
+//         let userName = msg.sender?.name || "Unknown";
+//         userName = userName.charAt(0).toUpperCase() + userName.slice(1);
+//         const isMe = msg.userId === userId;
+
+//         // Format date and time
+//         const dt = new Date(msg.createdAt || msg.created_at);
+//         const dateStr = dt.toLocaleDateString();
+//         const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+//         const div = document.createElement("div");
+//         div.className = "bubble " + (isMe ? "me" : "other");
+//         div.innerHTML = `
+//             <div style="display:flex;justify-content:space-between;font-size:0.9em;color:#888;">
+//                 <span>${userName}</span>
+//                 <span>${dateStr} ${timeStr}</span>
+//             </div>
+//             <div>${msg.text || msg.content}</div>
+//         `;
+//         log.appendChild(div);
+//     });
+
+//     if (!append) {
+//         log.scrollTop = log.scrollHeight;
+//     } else {
+//         log.scrollTop = log.scrollHeight - prevHeight;
+//     }
+// }
+
 function renderMessages(list, append) {
     const log = document.getElementById("log");
     if (!append) log.innerHTML = "";
@@ -113,11 +149,24 @@ function renderMessages(list, append) {
 
     list.forEach((msg, idx) => {
         if (append && idx < limit) return;
-        let userName = msg.sender?.name || "Unknown";
+
+        // System message
+        if (msg.system) {
+            const dt = new Date(msg.createdAt);
+            const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const div = document.createElement("div");
+            div.className = "bubble system";
+            div.style.textAlign = "center";
+            div.style.background = "none";
+            div.style.color = "#888";
+            div.innerHTML = `<span>${msg.content} <span style="font-size:0.85em;">(${timeStr})</span></span>`;
+            log.appendChild(div);
+            return;
+        }
+
+        let userName = msg.user?.name || msg.User?.name || msg.user || "Unknown";
         userName = userName.charAt(0).toUpperCase() + userName.slice(1);
         const isMe = msg.userId === userId;
-
-        // Format date and time
         const dt = new Date(msg.createdAt || msg.created_at);
         const dateStr = dt.toLocaleDateString();
         const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -129,7 +178,8 @@ function renderMessages(list, append) {
                 <span>${userName}</span>
                 <span>${dateStr} ${timeStr}</span>
             </div>
-            <div>${msg.text || msg.content}</div>
+            <div>${msg.text || msg.content || ""}</div>
+            ${msg.fileUrl ? renderMedia(msg.fileUrl) : ""}
         `;
         log.appendChild(div);
     });
@@ -140,6 +190,7 @@ function renderMessages(list, append) {
         log.scrollTop = log.scrollHeight - prevHeight;
     }
 }
+
 // Load previous messages (pagination)
 document.getElementById("btn-load-prev").onclick = async () => {
     offset += limit;
@@ -166,20 +217,60 @@ document.getElementById("btn-load-prev").onclick = async () => {
 //         await loadMessages();
 //     } catch (err) { }
 // }
+// async function sendMessage() {
+//     const input = document.getElementById("msg");
+//     const text = input.value.trim();
+//     if (!text || !currentGroupId) return;
+//     try {
+//         await axios.post(
+//             `${API_BASE}/groups/${currentGroupId}/messages`,
+//             { content: text },
+//             { headers: authHeader() }
+//         );
+//         input.value = "";
+//         // No need to reload messages, will be handled by WebSocket
+//     } catch (err) { }
+// }
+
 async function sendMessage() {
     const input = document.getElementById("msg");
+    const fileInput = document.getElementById("file-input");
     const text = input.value.trim();
-    if (!text || !currentGroupId) return;
+    const file = fileInput.files[0];
+
+    if (!currentGroupId) return;
+
     try {
-        await axios.post(
-            `${API_BASE}/groups/${currentGroupId}/messages`,
-            { content: text },
-            { headers: authHeader() }
-        );
+        if (file) {
+            // Send media message
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('content', text);
+
+            await axios.post(
+                `${API_BASE}/groups/${currentGroupId}/messages/media`,
+                formData,
+                {
+                    headers: {
+                        ...authHeader(),
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+            fileInput.value = "";
+        } else if (text) {
+            // Send text message
+            await axios.post(
+                `${API_BASE}/groups/${currentGroupId}/messages`,
+                { content: text },
+                { headers: authHeader() }
+            );
+        }
         input.value = "";
         // No need to reload messages, will be handled by WebSocket
     } catch (err) { }
 }
+
 
 // ========== MEMBERS ==========
 
@@ -326,6 +417,24 @@ document.getElementById("msg").addEventListener("keydown", (e) => {
 // setInterval(() => {
 //     if (offset === 0) loadMessages();
 // }, 5000);
+
+
+// Helper to render media based on file type
+function renderMedia(fileUrl) {
+    const ext = fileUrl.split('.').pop().toLowerCase();
+    const fullUrl = API_BASE + fileUrl;
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+        return `<div style="margin-top:6px;"><img src="${fullUrl}" style="max-width:200px;max-height:200px;border-radius:8px;"></div>`;
+    }
+    if (['mp4', 'webm', 'ogg'].includes(ext)) {
+        return `<div style="margin-top:6px;"><video controls style="max-width:200px;max-height:200px;border-radius:8px;"><source src="${fullUrl}"></video></div>`;
+    }
+    if (['mp3', 'wav', 'ogg'].includes(ext)) {
+        return `<div style="margin-top:6px;"><audio controls style="width:200px;"><source src="${fullUrl}"></audio></div>`;
+    }
+    // For other files, show as download link
+    return `<div style="margin-top:6px;"><a class="chip" href="${fullUrl}" target="_blank">📎 Download File</a></div>`;
+}
 
 // ========== INIT ==========
 
